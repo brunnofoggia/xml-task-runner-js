@@ -1,0 +1,32 @@
+{
+    "include": ["./src/**/*", "./test/**/*"],
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "commonjs",
+        // "target": "ESNext",
+        // "module": "NodeNext",
+        // "moduleResolution": "NodeNext",
+        "allowJs": true,
+        "declaration": true,
+        "removeComments": true,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "allowSyntheticDefaultImports": true,
+        "sourceMap": true,
+        "outDir": "./lib",
+        "baseUrl": "./src",
+        "incremental": true,
+        "skipLibCheck": true,
+        "strictNullChecks": false,
+        "noImplicitAny": false,
+        "strictBindCallApply": false,
+        "forceConsistentCasingInFileNames": false,
+        "noFallthroughCasesInSwitch": false,
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "typeRoots": ["./@types", "./src/@types", "./node_modules/@types"],
+        "paths": {
+            "@test/*": ["../test/*"]
+        }
+    }
+}
