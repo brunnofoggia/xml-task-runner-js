@@ -20,15 +20,12 @@ export class XmlTaskRunner extends XmlTaskBuilder {
     async execute(options: any = {}) {
         this.checkParams();
 
-        // Enable string reading mode
-        this.inputStream.setEncoding('utf-8');
-
         // Write header
         if (this.header?.print) {
-            this.writeHeader();
+            await this.writeHeader();
         }
 
-        this.parser = new SaxAsync(true, { ...options, stream: this.inputStream });
+        this.parser = new SaxAsync(true, { ignoreDataEvents: true, ...options, stream: this.inputStream });
         this.parser.on('opentag', bind(this._eventOpenTag, this));
         this.parser.on('text', bind(this._eventText, this));
         this.parser.on('closetag', bind(this._eventCloseTag, this));

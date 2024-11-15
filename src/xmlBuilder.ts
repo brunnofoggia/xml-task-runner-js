@@ -55,15 +55,15 @@ export class XmlBuilder {
     // #endregion
 
     // #region writters
-    protected writeHeader() {
-        this.writeOnStream(xmlScribe.declaration({}));
+    protected async writeHeader() {
+        await this.writeOnStream(xmlScribe.declaration({}));
         this.isFirstOutputLine = false;
     }
 
-    protected writeOpenNode(node: Tag | Partial<TaskTag>) {
+    protected async writeOpenNode(node: Tag | Partial<TaskTag>) {
         // identation
-        if (this.identation) this._addIdentation(this.identationPosition, this.identation);
-        this.writeOnStream(xmlScribe.open(node.name, node.attributes, node.isSelfClosing));
+        if (this.identation) await this._addIdentation(this.identationPosition, this.identation);
+        await this.writeOnStream(xmlScribe.open(node.name, node.attributes, node.isSelfClosing));
 
         // identation (sax await calls closeTag event)
         // if (!node.isSelfClosing) {
@@ -72,7 +72,7 @@ export class XmlBuilder {
         // }
     }
 
-    protected writeCloseNode(node: Tag | Partial<TaskTag>) {
+    protected async writeCloseNode(node: Tag | Partial<TaskTag>) {
         // identation (sax await calls closeTag event)
         // if (!node.isSelfClosing) {
         this.lastClosedNodeName = node.name;
@@ -80,18 +80,19 @@ export class XmlBuilder {
         // }
 
         // avoids to breakline or ident <tag>content     </tag> after content
-        if (this.identation && this.lastOpenedTagName !== this.lastClosedNodeName) this._addIdentation(this.identationPosition, this.identation);
-        if (!this._nodeIsSelfClosing(node)) this.writeOnStream(xmlScribe.close(node.name));
+        if (this.identation && this.lastOpenedTagName !== this.lastClosedNodeName)
+            await this._addIdentation(this.identationPosition, this.identation);
+        if (!this._nodeIsSelfClosing(node)) await this.writeOnStream(xmlScribe.close(node.name));
     }
 
-    protected writeNodeValue(text: string) {
+    protected async writeNodeValue(text: string) {
         if (this.skipNextContent) return;
-        this.writeOnStream(`${text || ''}`);
+        await this.writeOnStream(`${text || ''}`);
     }
 
-    writeOnStream(text) {
+    async writeOnStream(text) {
         if (!this.outputStream) return;
-        this.outputStream.write(text);
+        await this.outputStream.write(text);
     }
     // #endregion
 
@@ -127,21 +128,21 @@ export class XmlBuilder {
     // #endregion
 
     // #region identation
-    protected _replicateIdentation() {
-        this._addIdentation(this.identationPosition);
+    protected async _replicateIdentation() {
+        await this._addIdentation(this.identationPosition);
     }
 
-    protected _addIdentation(position = 1, breakLineBefore = false) {
+    protected async _addIdentation(position = 1, breakLineBefore = false) {
         const size = position * this.identationSize;
         if (breakLineBefore) {
-            if (!this.isFirstOutputLine) this._breakLine();
+            if (!this.isFirstOutputLine) await this._breakLine();
             this.isFirstOutputLine = false;
         }
-        if (size) this.writeOnStream(''.padEnd(size, ' '));
+        if (size) await this.writeOnStream(''.padEnd(size, ' '));
     }
 
-    protected _breakLine() {
-        this.writeOnStream(this.lineBreaker);
+    protected async _breakLine() {
+        await this.writeOnStream(this.lineBreaker);
     }
     // #endregion
 
