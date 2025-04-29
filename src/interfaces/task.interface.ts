@@ -15,14 +15,16 @@ export interface TaskTag {
     attributes: NodeElementAttributes;
     newAttributes: NodeElementAttributes;
     isSelfClosing: boolean;
-    childNodes: Partial<TaskTag>[];
+    changeChildNodes: Partial<TaskTag>[];
+    newChildNodes: Partial<TaskTag>[];
     keepParentChildNodesAt: 'inside' | 'outside';
     updateTaskNodeOptions: any;
-    childOptions: any;
     deleteTag: boolean;
-    deleteChildNodes: boolean;
+    deleteChildNodes: boolean | string[];
     stash: any;
     value?: string;
+    // internal field used to map tree
+    childOptions: any;
     // stash: { value: string } | { [key: string]: string };
     // lifecycle
     beforeTagOpenWrite: (node: Partial<TaskTag>, instance: XmlBuilder) => void;

@@ -82,6 +82,18 @@ export class XmlTaskRunner extends XmlTaskBuilder {
                 const result = await this.pushChildNodeContent(lastTaskOpenedNode, text, this.lastCalledOpenTagName, childOptions);
                 if (typeof result.value !== 'undefined') text = result.value;
             }
+
+            // child value replacement
+            let node = this.getLastOpenedNode();
+            const { childNodeReplacementConfig } = this._getTaskChildNodeReplacement(node);
+            if (childNodeReplacementConfig) {
+                const newNode = this._createChildNodeReplacement(node, childNodeReplacementConfig);
+                node = newNode;
+
+                // if node value was replaced and received a new value
+                // if (node['value']) return;
+                if (node.value) text = node.value;
+            }
         }
 
         await this.writeNodeValue(text);
@@ -108,6 +120,8 @@ export class XmlTaskRunner extends XmlTaskBuilder {
     // #region tasks
     protected async _executeOpenTagTask(node: Tag, task: XmlTasks) {
         const taskNode = await this._createTaskNode(task, node);
+        this.processingTagList[node.name].taskNode = taskNode;
+
         this.taskChildOptions = taskNode.childOptions;
 
         // const shouldCollectChildAttributes = this.shouldCollectChildNodesAttributes(taskNode);

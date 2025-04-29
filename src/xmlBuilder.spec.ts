@@ -52,27 +52,27 @@ describe('XmlBuilder', () => {
         });
 
         test('should handle nested nodes correctly', async () => {
-            const parentNode: Partial<TaskTag> = { name: 'parent', attributes: {}, isSelfClosing: false, childNodes: [] };
+            const parentNode: Partial<TaskTag> = { name: 'parent', attributes: {}, isSelfClosing: false, newChildNodes: [] };
             const childNode: Partial<TaskTag> = { name: 'child', attributes: {}, isSelfClosing: false, value: 'child content' };
-            parentNode.childNodes.push(childNode);
+            parentNode.newChildNodes.push(childNode);
             await xmlBuilder.writeNewTag(parentNode);
             expect(mockStream.data).toContain('<parent><child>child content</child></parent>');
         });
 
         test('should handle nested nodes with attributes correctly', async () => {
-            const parentNode: Partial<TaskTag> = { name: 'parent', attributes: { key: 'value' }, isSelfClosing: false, childNodes: [] };
+            const parentNode: Partial<TaskTag> = { name: 'parent', attributes: { key: 'value' }, isSelfClosing: false, newChildNodes: [] };
             const childNode: Partial<TaskTag> = { name: 'child', attributes: { key: 'value' }, isSelfClosing: false, value: 'child content' };
-            parentNode.childNodes.push(childNode);
+            parentNode.newChildNodes.push(childNode);
             await xmlBuilder.writeNewTag(parentNode);
             expect(mockStream.data).toContain('<parent key="value"><child key="value">child content</child></parent>');
         });
 
         test('should handle many nested nodes correctly', async () => {
-            const parentNode: Partial<TaskTag> = { name: 'parent', attributes: {}, isSelfClosing: false, childNodes: [] };
-            const childNode: Partial<TaskTag> = { name: 'child', attributes: {}, isSelfClosing: false, value: 'child content', childNodes: [] };
+            const parentNode: Partial<TaskTag> = { name: 'parent', attributes: {}, isSelfClosing: false, newChildNodes: [] };
+            const childNode: Partial<TaskTag> = { name: 'child', attributes: {}, isSelfClosing: false, value: 'child content', newChildNodes: [] };
             const grandChildNode: Partial<TaskTag> = { name: 'grandchild', attributes: {}, isSelfClosing: false, value: 'grandchild content' };
-            childNode.childNodes.push(grandChildNode);
-            parentNode.childNodes.push(childNode);
+            childNode.newChildNodes.push(grandChildNode);
+            parentNode.newChildNodes.push(childNode);
 
             await xmlBuilder.writeNewTag(parentNode);
             expect(mockStream.data).toContain('<parent><child><grandchild>grandchild content</grandchild></child></parent>');
@@ -82,11 +82,11 @@ describe('XmlBuilder', () => {
     describe('identation', () => {
         test('should write identation correctly', async () => {
             xmlBuilder.setParams({ identation: true, identationSize: 2, outputStream: mockStream });
-            const parentNode: Partial<TaskTag> = { name: 'parent', attributes: {}, isSelfClosing: false, childNodes: [] };
-            const childNode: Partial<TaskTag> = { name: 'child', attributes: {}, isSelfClosing: false, value: 'child content', childNodes: [] };
+            const parentNode: Partial<TaskTag> = { name: 'parent', attributes: {}, isSelfClosing: false, newChildNodes: [] };
+            const childNode: Partial<TaskTag> = { name: 'child', attributes: {}, isSelfClosing: false, value: 'child content', newChildNodes: [] };
             const grandChildNode: Partial<TaskTag> = { name: 'grandchild', attributes: {}, isSelfClosing: false, value: 'grandchild content' };
-            childNode.childNodes.push(grandChildNode);
-            parentNode.childNodes.push(childNode);
+            childNode.newChildNodes.push(grandChildNode);
+            parentNode.newChildNodes.push(childNode);
 
             await xmlBuilder.writeNewTag(parentNode);
             expect(mockStream.data).toContain(
@@ -96,12 +96,12 @@ describe('XmlBuilder', () => {
 
         test('should write identation correctly event when there is a grand child self closing', async () => {
             xmlBuilder.setParams({ identation: true, identationSize: 2, outputStream: mockStream });
-            const parentNode: Partial<TaskTag> = { name: 'parent', attributes: {}, isSelfClosing: false, childNodes: [] };
-            const childNode: Partial<TaskTag> = { name: 'child', attributes: {}, isSelfClosing: false, value: 'child content', childNodes: [] };
+            const parentNode: Partial<TaskTag> = { name: 'parent', attributes: {}, isSelfClosing: false, newChildNodes: [] };
+            const childNode: Partial<TaskTag> = { name: 'child', attributes: {}, isSelfClosing: false, value: 'child content', newChildNodes: [] };
             const grandChildNode1: Partial<TaskTag> = { name: 'grandchild', attributes: {}, isSelfClosing: true, value: 'grandchild content' };
             const grandChildNode2: Partial<TaskTag> = { name: 'grandchild', attributes: {}, isSelfClosing: false, value: 'grandchild content' };
-            childNode.childNodes.push(grandChildNode1, grandChildNode2);
-            parentNode.childNodes.push(childNode);
+            childNode.newChildNodes.push(grandChildNode1, grandChildNode2);
+            parentNode.newChildNodes.push(childNode);
 
             await xmlBuilder.writeNewTag(parentNode);
             expect(mockStream.data).toContain(

@@ -1,4 +1,4 @@
-import { cloneDeep, set, isBoolean, defaultsDeep, get, size, filter } from 'lodash';
+import { cloneDeep, set, isBoolean, defaultsDeep, get, size, filter, isArray, toArray, find } from 'lodash';
 
 import { Tag } from 'sax-async/lib/index';
 
@@ -20,7 +20,7 @@ export class XmlTaskBuilder extends XmlBuilder {
 
     protected processingTagList: ProcessingTagList = {};
     protected taskChildOptions: any = false;
-    protected skipNextContent = false;
+    protected skipNextContent: any = false;
 
     protected lastCalledOpenTagName: string = '';
     protected lastCalledCloseTagName: string = '';
@@ -53,8 +53,32 @@ export class XmlTaskBuilder extends XmlBuilder {
         return taskNode?.deleteTag;
     }
 
+    protected _setDeleteChildNodes(taskNode: Partial<TaskTag>): boolean | string[] {
+        const deleteChildNodes = taskNode?.deleteChildNodes || false;
+        if (isArray(deleteChildNodes) && deleteChildNodes.length === 0) return false;
+
+        return isBoolean(deleteChildNodes) || isArray(deleteChildNodes) ? deleteChildNodes : toArray(deleteChildNodes);
+    }
+
+    protected _getDeleteChildNodes(taskNode: Partial<TaskTag>): boolean | string[] {
+        const deleteChildNodes = taskNode?.deleteChildNodes || false;
+        if (isArray(deleteChildNodes) && deleteChildNodes.length === 0) return false;
+
+        return isBoolean(deleteChildNodes) || isArray(deleteChildNodes) ? deleteChildNodes : toArray(deleteChildNodes);
+    }
+
+    protected _getDeleteChildNodesList(taskNode: Partial<TaskTag>): string[] {
+        const deleteChildNodes = taskNode.deleteChildNodes;
+        console.log('deleteChildNodesList', deleteChildNodes);
+
+        if (isBoolean(deleteChildNodes)) return [];
+
+        return toArray(deleteChildNodes);
+    }
+
     protected _shouldDeleteChildNodes(taskNode: Partial<TaskTag>) {
-        return taskNode?.deleteChildNodes;
+        const deleteChildNodes = taskNode.deleteChildNodes;
+        return !!deleteChildNodes;
     }
 
     protected _getTaskNodeAttributes(taskNode: Partial<TaskTag>) {
@@ -71,24 +95,62 @@ export class XmlTaskBuilder extends XmlBuilder {
             tree: true,
         });
     }
+
+    _isTaskChildNode(node: Tag) {
+        const taskNode = this.getLastTaskOpenedNode();
+        const isTaskChildNode = !!taskNode && taskNode.name !== node.name;
+
+        return { taskNode, isTaskChildNode };
+    }
+
+    _getTaskChildNodeReplacement(node) {
+        const { taskNode, isTaskChildNode } = this._isTaskChildNode(node);
+
+        let childNodeReplacementConfig;
+        if (isTaskChildNode) {
+            childNodeReplacementConfig = this.findChangeChildNode(node.name, taskNode);
+        }
+
+        return { taskNode, isTaskChildNode, childNodeReplacementConfig };
+    }
+
+    findChangeChildNode(nodeName, taskNode) {
+        if (!taskNode) return null;
+        const changeChildNodes = taskNode.changeChildNodes || [];
+        const childNode = find(changeChildNodes, (childNode) => childNode.name === nodeName);
+        return childNode;
+    }
     // #endregion
 
     // #region writters
     protected async writeOpenNode(node: Tag) {
         this.lastCalledOpenTagName = node.name;
+        const _shouldSkipNextContentBasedOnNextTags = this._shouldSkipNextContentBasedOnNextTags(node);
+        if (_shouldSkipNextContentBasedOnNextTags !== null) this.skipNextContent = _shouldSkipNextContentBasedOnNextTags;
+
         if (!node.isSelfClosing) this.addOpenedNode(node);
 
-        const taskNode = this.getLastTaskOpenedNode();
-        const isTaskChildNode = !!taskNode;
         const shouldCollectChildAttributes = this.shouldCollectChildNodesAttributes(node);
 
+        const { taskNode, isTaskChildNode, childNodeReplacementConfig } = this._getTaskChildNodeReplacement(node);
         // save child attributes
-        if (isTaskChildNode && shouldCollectChildAttributes) {
-            const childOptions = this.taskChildOptions;
-            await this.pushChildNodeAttributes(taskNode, node.attributes, node.name, childOptions);
+        if (isTaskChildNode) {
+            if (shouldCollectChildAttributes) {
+                const childOptions = this.taskChildOptions;
+                await this.pushChildNodeAttributes(taskNode, node.attributes, node.name, childOptions);
+            }
+
+            // if is a task child node with replacement config override the node
+            node = this._createChildNodeReplacement(node, childNodeReplacementConfig);
         }
 
-        if (!this.skipNextContent) await super.writeOpenNode(node);
+        const shouldSkipNextContent = this._shouldSkipNextContent();
+        if (!shouldSkipNextContent) {
+            await super.writeOpenNode(node);
+
+            // will write a new value if the node was originally self closing
+            if (!node.isSelfClosing && node['wasSelfClosing']) await this._writeNodeValue(node['value']);
+        }
     }
 
     protected async writeTaskOpenNode(taskNode: Partial<TaskTag>) {
@@ -99,11 +161,16 @@ export class XmlTaskBuilder extends XmlBuilder {
         const shouldDeleteChildNodes = this._shouldDeleteChildNodes(taskNode);
 
         if (!isDeletedNode) {
-            if (isDeletedNode === false) this.skipNextContent = false;
+            // if (isDeletedNode === false)
+            this.skipNextContent = false;
+
             const node = this.buildNodeFromTask(taskNode);
             await this.writeOpenNode(node);
 
-            if (shouldDeleteChildNodes) this.skipNextContent = true;
+            if (shouldDeleteChildNodes) {
+                this.skipNextTags = this._getDeleteChildNodesList(taskNode);
+                if (!this.skipNextTags.length) this.skipNextContent = true;
+            }
         } else {
             this.skipNextContent = true;
         }
@@ -115,7 +182,14 @@ export class XmlTaskBuilder extends XmlBuilder {
     protected async writeCloseNode(node: Tag) {
         this.lastCalledCloseTagName = node.name;
 
-        if (!this.skipNextContent) await super.writeCloseNode(node);
+        // if is a task child node with replacement config override the node
+        const { isTaskChildNode, childNodeReplacementConfig } = this._getTaskChildNodeReplacement(node);
+        if (isTaskChildNode && childNodeReplacementConfig) {
+            const newNode = this._createChildNodeReplacement(node, childNodeReplacementConfig);
+            node = newNode;
+        }
+
+        if (!this._shouldSkipNextContent()) await super.writeCloseNode(node);
         this.removeLastOpenedNode();
     }
 
@@ -125,9 +199,13 @@ export class XmlTaskBuilder extends XmlBuilder {
 
         const isDeletedNode = this._isDeletedTaskNode(taskNode);
         const shouldDeleteChildNodes = this._shouldDeleteChildNodes(taskNode);
+
         if (!isDeletedNode) {
             // avoid missing close tag after deleting child nodes
-            if (shouldDeleteChildNodes) this.skipNextContent = false;
+            if (shouldDeleteChildNodes) {
+                this.skipNextContent = false;
+                this.skipNextTags = [];
+            }
 
             // XXX: disabled to follow the same behavior as the original sax events does
             // if (this._nodeIsSelfClosing(taskNode)) return;
@@ -137,7 +215,10 @@ export class XmlTaskBuilder extends XmlBuilder {
         }
 
         // reset value for next node only if is a task node with the setting
-        if (isDeletedNode) this.skipNextContent = false;
+        if (isDeletedNode || shouldDeleteChildNodes) {
+            this.skipNextContent = false;
+            this.skipNextTags = [];
+        }
 
         if (taskNode.afterTagCloseWrite) await taskNode.afterTagCloseWrite(taskNode, this);
     }
@@ -172,7 +253,8 @@ export class XmlTaskBuilder extends XmlBuilder {
         taskNode.attributes = node.attributes;
 
         // lists
-        taskNode.childNodes = defaultsDeep({}, data.childNodes);
+        taskNode.newChildNodes = defaultsDeep([], data.newChildNodes || []);
+        taskNode.changeChildNodes = defaultsDeep([], data.changeChildNodes || []);
         taskNode.childOptions = defaultsDeep({}, this.defineChildOptions(data.childOptions));
 
         // lifecycle functions
@@ -185,7 +267,7 @@ export class XmlTaskBuilder extends XmlBuilder {
         taskNode.newAttributes = data.newAttributes;
         taskNode.stash = defaultsDeep({}, data.stash);
         taskNode.deleteTag = !!data.deleteTag;
-        taskNode.deleteChildNodes = !!data.deleteChildNodes;
+        taskNode.deleteChildNodes = this._setDeleteChildNodes(data);
 
         // keep task child node stash updated after receiving existent child node values + attributes
         taskNode.updateTaskNodeOptions = async (stash) => {
@@ -202,7 +284,6 @@ export class XmlTaskBuilder extends XmlBuilder {
             }
         };
 
-        this.processingTagList[node.name].taskNode = taskNode;
         return taskNode as TaskTag;
     }
 
@@ -224,6 +305,22 @@ export class XmlTaskBuilder extends XmlBuilder {
         const node = { name: nodeName, attributes, isSelfClosing };
 
         return node;
+    }
+
+    protected _createChildNodeReplacement(node, childNodeReplacementConfig) {
+        if (!childNodeReplacementConfig) return node;
+
+        const newNode = cloneDeep(node);
+        newNode['isReplacement'] = true;
+
+        newNode.name = childNodeReplacementConfig.newName || childNodeReplacementConfig.name;
+        newNode.attributes = defaultsDeep({}, childNodeReplacementConfig.attributes, childNodeReplacementConfig.newAttributes, node.attributes);
+        newNode['value'] = childNodeReplacementConfig.value;
+
+        newNode.isSelfClosing = childNodeReplacementConfig.isSelfClosing || (!newNode['value'] ? true : false);
+        newNode['wasSelfClosing'] = !!node.isSelfClosing;
+
+        return newNode;
     }
     // #endregion
 

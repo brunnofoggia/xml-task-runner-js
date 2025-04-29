@@ -1,4 +1,4 @@
-import { size } from 'lodash';
+import { indexOf, isArray, size } from 'lodash';
 
 import xmlScribe from 'sax-async/lib/util/xmlScribe';
 import { Tag } from 'sax-async/lib/index';
@@ -14,7 +14,8 @@ export class XmlBuilder {
 
     protected lastClosedNodeName: string = '';
     protected isSelfClosedNode = false;
-    protected skipNextContent = false;
+    protected skipNextContent: any = false;
+    protected skipNextTags: any = [];
 
     protected openedNode: Partial<TaskTag>[] = [];
 
@@ -36,6 +37,16 @@ export class XmlBuilder {
         if (params.lineBreaker) this.lineBreaker = params.lineBreaker;
     }
 
+    protected _shouldSkipNextContent() {
+        return this.skipNextContent === true;
+    }
+
+    // this will ensure to stop writting everything after a deleted child node was summoned
+    // making possible to keep identation at the right place
+    protected _shouldSkipNextContentBasedOnNextTags(node: any = null) {
+        if (!this.skipNextTags.length) return null;
+        return this.skipNextTags.indexOf(node.name) > -1;
+    }
     // #region getters
     protected _getCurrentNode() {
         return this.openedNode[this.openedNode.length - 1];
@@ -50,7 +61,7 @@ export class XmlBuilder {
     }
 
     protected _nodeHasChildNodes(node: Partial<TaskTag>) {
-        return size(node.childNodes) > 0;
+        return size(node.newChildNodes) > 0;
     }
     // #endregion
 
@@ -85,9 +96,13 @@ export class XmlBuilder {
         if (!this._nodeIsSelfClosing(node)) await this.writeOnStream(xmlScribe.close(node.name));
     }
 
-    protected async writeNodeValue(text: string) {
-        if (this.skipNextContent) return;
+    protected async _writeNodeValue(text: string) {
         await this.writeOnStream(`${text || ''}`);
+    }
+
+    protected async writeNodeValue(text: string) {
+        if (this._shouldSkipNextContent()) return;
+        await this._writeNodeValue(text);
     }
 
     async writeOnStream(text) {
@@ -109,7 +124,7 @@ export class XmlBuilder {
     }
 
     protected async _writeNodeContent(node: Partial<TaskTag>) {
-        if (node.childNodes) {
+        if (node.newChildNodes) {
             await this._writeNewChildNodes(node);
             return;
         }
@@ -119,8 +134,8 @@ export class XmlBuilder {
 
     protected async _writeNewChildNodes(node: Partial<TaskTag>) {
         if (!this._nodeIsSelfClosing(node) && this._nodeHasChildNodes(node)) {
-            for (const index in node.childNodes) {
-                const childNode = node.childNodes[index];
+            for (const index in node.newChildNodes) {
+                const childNode = node.newChildNodes[index];
                 await this.writeNewTag(childNode);
             }
         }
