@@ -73,7 +73,13 @@ export class XmlTaskRunner extends XmlTaskBuilder {
 
         if (isTextOfIdentation) {
             if (this.identation || this.clearIdentation) return;
-        } else {
+        } else if (lastOpenedNode) {
+            if (lastTaskOpenedNode && !lastOpenedNode) {
+                console.log('lastTaskOpenedNode', lastTaskOpenedNode);
+                console.log(`eventText: ${text}`);
+
+                throw new Error('Invalid XML structure: Task node is not properly closed');
+            }
             // collect data from node when it is the content of a tasknode or
             // when the tasknode has the collect option enabled for its childs
             const isTaskNodeContent = lastTaskOpenedNode && lastTaskOpenedNode.name === lastOpenedNode.name;

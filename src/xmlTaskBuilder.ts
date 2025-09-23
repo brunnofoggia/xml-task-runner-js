@@ -317,7 +317,11 @@ export class XmlTaskBuilder extends XmlBuilder {
         newNode.attributes = defaultsDeep({}, childNodeReplacementConfig.attributes, childNodeReplacementConfig.newAttributes, node.attributes);
         newNode['value'] = childNodeReplacementConfig.value;
 
-        newNode.isSelfClosing = childNodeReplacementConfig.isSelfClosing || (!newNode['value'] ? true : false);
+        newNode.isSelfClosing = isBoolean(childNodeReplacementConfig.isSelfClosing)
+            ? childNodeReplacementConfig.isSelfClosing
+            : !newNode['value']
+            ? true
+            : false;
         newNode['wasSelfClosing'] = !!node.isSelfClosing;
 
         return newNode;
