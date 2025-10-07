@@ -1,6 +1,6 @@
 import { cloneDeep, set, isBoolean, defaultsDeep, get, size, filter, isArray, toArray, find } from 'lodash';
 
-import { Tag } from 'sax-async/lib/index';
+import { Tag } from 'sax-async-361/lib/index';
 
 import { TaskTag, XmlTasks, TaskCallbackFn, XmlParserParams, ProcessingTagList } from './interfaces/task.interface';
 import { XmlBuilder } from './xmlBuilder';

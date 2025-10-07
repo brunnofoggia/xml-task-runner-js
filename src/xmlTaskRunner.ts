@@ -1,7 +1,7 @@
 import { size, bind, clone, defaults, isBoolean } from 'lodash';
 
-import { Tag } from 'sax-async/lib/interfaces/sax.interface';
-import { SaxAsync } from 'sax-async/lib/index';
+import { Tag } from 'sax-async-361/lib/interfaces/sax.interface';
+import { SaxAsync } from 'sax-async-361/lib/index';
 
 import { XmlTasks, XmlParserParams } from './interfaces/task.interface';
 import { XmlTaskBuilder } from './xmlTaskBuilder';

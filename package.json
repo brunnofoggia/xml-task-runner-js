@@ -1,6 +1,6 @@
 {
     "name": "xml-task-runner",
-    "version": "0.3.3-alpha1",
+    "version": "0.3.4-alpha1",
     "description": "",
     "license": "ISC",
     "author": "Bruno Foggia",
@@ -40,7 +40,7 @@
     },
     "dependencies": {
         "lodash": "^4.17.21",
-        "sax-async": "github:brunnofoggia/sax-async-js"
+        "sax-async-361": "^1.0.6"
     },
     "files": [
         "/lib"

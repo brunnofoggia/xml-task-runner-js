@@ -1,5 +1,5 @@
 import { XmlTaskBuilder } from './xmlTaskBuilder';
-import { Tag } from 'sax-async/lib/index';
+import { Tag } from 'sax-async-361/lib/index';
 import { TaskTag, XmlTasks } from './interfaces/task.interface';
 
 describe('XmlTaskBuilder', () => {

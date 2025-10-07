@@ -1,4 +1,4 @@
-import { NodeElementAttributes, Tag } from 'sax-async/lib/index';
+import { NodeElementAttributes, Tag } from 'sax-async-361/lib/index';
 
 import { XmlBuilder } from '../xmlBuilder';
 import { XmlBuilderParams } from './builder.interface';

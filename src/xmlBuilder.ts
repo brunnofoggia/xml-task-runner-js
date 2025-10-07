@@ -1,7 +1,7 @@
 import { indexOf, isArray, size } from 'lodash';
 
-import xmlScribe from 'sax-async/lib/util/xmlScribe';
-import { Tag } from 'sax-async/lib/index';
+import xmlScribe from 'sax-async-361/lib/util/xmlScribe';
+import { Tag } from 'sax-async-361/lib/index';
 
 import { TaskTag } from './interfaces/task.interface';
 import { XmlBuilderParams } from './interfaces/builder.interface';
